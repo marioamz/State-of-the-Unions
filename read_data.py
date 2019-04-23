@@ -40,6 +40,67 @@ def reading_data(PATH, filetype):
 
     return speeches
 
+def counts_by_pres(data, keys, dict_use):
+    '''
+    Function to create a dictionary of words counts by president. A larger function that allows the user to choose the data cut calls this function.
+    
+    inputs: 
+        data: speech text from reading_data function above
+        keys: the keys of the dictionary outputted in reading_data function above
+        dict_use: the dictionary that is to be filled
+    output:
+       dict_use: a dictionary of dictionary of counts.
+    '''
+    for k in keys:
+        key = k[0]
+        for l in data[k]:
+            for word in l.split():
+                if word in dict_use[key]:
+                    dict_use[key][word] += 1
+                else:
+                    dict_use[key][word] = 1
+    return dict_use
+
+def counts_by_pres_year(data, keys, dict_use):
+    '''
+    Function to create a dictionary of words counts by president and year. A larger function that allows the user to choose the data cut calls this function.
+    
+    inputs: 
+        data: speech text from reading_data function above
+        keys: the keys of the dictionary outputted in reading_data function above
+        dict_use: the dictionary that is to be filled
+    output:
+       dict_use: a dictionary of dictionary of counts.
+    '''
+    for k in keys:
+        for l in data[k]:
+            for word in l.split():
+                if word in dict_use[k]:
+                    dict_use[k][word] += 1
+                else:
+                    dict_use[k][word] = 1
+    return dict_use
+
+def make_dict(data, keys, dict_use, breakout):
+    '''
+    Function that calls other functions based on the breakout specified.
+    
+    inputs: 
+        data: speech text from reading_data function above
+        keys: the keys of the dictionary outputted in reading_data function above
+        dict_use: the dictionary that is to be filled
+        breakout: user defined entry that allows them to choose the type of breakout wanted.
+    output:
+       dict_use: a dictionary of dictionary of counts.
+    '''
+    if breakout == "by pres":
+        print("by pres")
+        return counts_by_pres(data, keys, dict_use)
+    if breakout == "by pres year":
+        print("by pres year")
+        return counts_by_pres_year(data, keys, dict_use)
+    else:
+        raise Exception('breakout should either be "by pres" or "by pres year". The value of breakout was: {}'.format(breakout))
 
 if __name__ == '__main__':
     go()

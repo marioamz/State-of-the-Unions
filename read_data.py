@@ -1,10 +1,24 @@
 # Script for reading in the data
 
+import read_data as rd
+import importlib
+importlib.reload(rd)
+import nltk
+import collections
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 import glob
 import os
 import re
 import sys
 
+stopWords = set(stopwords.words('english'))
+stopWords.add("000")
+tokenizer = RegexpTokenizer(r'\w+')
 
 def go():
     '''
@@ -54,8 +68,8 @@ def counts_by_pres(data, keys, dict_use):
     for k in keys:
         key = k[0]
         for l in data[k]:
-            for word in l.split():
-                if word in dict_use[key]:
+            for word in tokenizer.tokenize(l.lower()):
+                if word in dict_use[key] and word not in stopWords:
                     dict_use[key][word] += 1
                 else:
                     dict_use[key][word] = 1

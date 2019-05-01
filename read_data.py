@@ -69,10 +69,11 @@ def counts_by_pres(data, keys, dict_use):
         key = k[0]
         for l in data[k]:
             for word in tokenizer.tokenize(l.lower()):
-                if word in dict_use[key] and word not in stopWords:
-                    dict_use[key][word] += 1
-                else:
-                    dict_use[key][word] = 1
+                if word not in stopWords:
+                    if word in dict_use[key]:
+                        dict_use[key][word] += 1
+                    else:
+                        dict_use[key][word] = 1
     return dict_use
 
 def counts_by_pres_year(data, keys, dict_use):
@@ -88,11 +89,36 @@ def counts_by_pres_year(data, keys, dict_use):
     '''
     for k in keys:
         for l in data[k]:
-            for word in l.split():
-                if word in dict_use[k]:
-                    dict_use[k][word] += 1
+            for word in tokenizer.tokenize(l.lower()):
+                if word not in stopWords:
+                    if word in dict_use[k].keys():
+                        #rint(dict_use[k].keys())
+                        dict_use[k][word] += 1
+                    else:
+                        dict_use[k][word] = 1  
+    return dict_use
+
+def counts_overall(data):
+    '''
+    Function to create a dictionary of words counts by president and year. A larger function that allows the user to choose the data cut calls this function.
+    
+    inputs: 
+        data: speech text from reading_data function above
+        keys: the keys of the dictionary outputted in reading_data function above
+        dict_use: the dictionary that is to be filled
+    output:
+       dict_use: a dictionary of dictionary of counts.
+    '''
+    dict_use = {}
+    for n, key in enumerate(data):
+        if n == 0:
+            dict_use = data[key]
+        else:
+            for word in data[key].keys():
+                if word in dict_use.keys():
+                    dict_use[word] += data[key][word]
                 else:
-                    dict_use[k][word] = 1
+                    dict_use[word] = data[key][word]  
     return dict_use
 
 def make_dict(data, keys, dict_use, breakout):
@@ -108,13 +134,14 @@ def make_dict(data, keys, dict_use, breakout):
        dict_use: a dictionary of dictionary of counts.
     '''
     if breakout == "by pres":
-        print("by pres")
         return counts_by_pres(data, keys, dict_use)
-    if breakout == "by pres year":
-        print("by pres year")
+    elif breakout == "by pres year":
         return counts_by_pres_year(data, keys, dict_use)
+    elif breakout == "overall":
+        a = counts_by_pres_year(data, keys, dict_use)
+        return counts_overall(a)
     else:
-        raise Exception('breakout should either be "by pres" or "by pres year". The value of breakout was: {}'.format(breakout))
+        raise Exception('breakout should either be "by pres", "by pres year", or "overall". The value of breakout was: {}'.format(breakout))
 
 if __name__ == '__main__':
     go()

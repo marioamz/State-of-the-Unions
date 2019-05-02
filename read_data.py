@@ -142,6 +142,60 @@ def make_dict(data, keys, dict_use, breakout):
         return counts_overall(a)
     else:
         raise Exception('breakout should either be "by pres", "by pres year", or "overall". The value of breakout was: {}'.format(breakout))
+        
+
+def plot_top_words(data, list_of_presidents, top_words,  PATH, vertical=True, create_pngs = False):
+    
+    '''    
+    Creates a barplot for the top words for each president
+    Inputs:
+        data: dictionary with wordcounts by president
+        list_of_presidents (list of strings): if ["all"], it creates a plot for all presidents in the
+        data. Otherwise, it needs a list with the names of interest
+        top_words (int): number of k-top words
+        vertical: if True, it plots vertical bars; else, bars are horizontally aligned
+    Returns:
+            It does not return anything but shows the plot.
+    '''    
+    
+    if list_of_presidents[0] == "all":
+        for president in data.keys():
+            d = data[president]
+            top_list = sorted(d, key=d.get, reverse=True)[:top_words]
+            top_five = {word:val for word,val in d.items() if word in top_list}
+            dataframe= pd.DataFrame(top_five.items(), columns=['Words', 'Count'])
+            if vertical:
+                plot = sns.barplot(x="Words", y="Count", data=dataframe, order = top_list).set_title(president)
+                plt.show()
+                plot = plot.get_figure()
+                #if create_pngs == True: # Change the folder/path where you want to save the plots.
+                #    plot.savefig(PATH + president + ".png")
+            else:
+                plot = sns.barplot(y="Words", x="Count", data=dataframe, order = top_list).set_title(president)
+                plt.show()
+                plot = plot.get_figure()
+                #if create_pngs == True: # Change the folder/path where you want to save the plots
+                #    plot.savefig(PATH + president + ".png")
+
+    else:
+        for president in list_of_presidents:
+            d = data[president]
+            top_list = sorted(d, key=d.get, reverse=True)[:5]
+            top_five = {word:val for word,val in d.items() if word in top_list}
+            dataframe= pd.DataFrame(top_five.items(), columns=['Words', 'Count'])
+            if vertical:
+                plot = sns.barplot(x="Words", y="Count", data=dataframe, order = top_list).set_title(president)
+                plt.show()
+                plot = plot.get_figure()
+                #if create_pngs == True: # Change the folder/path where you want to save the plots
+                #    plot.savefig(PATH + president + ".png")
+
+            else:
+                plot = sns.barplot(y="Words", x="Count", data=dataframe, order = top_list).set_title(president)
+                plt.show()
+                plot = plot.get_figure()
+                #if create_pngs == True: # Change the folder/path where you want to save the plots
+                #    plot.savefig(PATH + president + ".png")
 
 if __name__ == '__main__':
     go()

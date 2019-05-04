@@ -15,6 +15,7 @@ import glob
 import os
 import re
 import sys
+import spacy
 
 stopWords = set(stopwords.words('english'))
 stopWords.add("000")
@@ -54,7 +55,25 @@ def reading_data(PATH, filetype):
 
     return speeches
 
+def chunks(dictionary):
+    '''
+    This function takes in a dictionary of speeches and creates
+    noun phrase observations for each.
+    '''
 
+    new_dict = {}
+
+    nlp = spacy.load('en_core_web_sm')
+
+    for k, v in dictionary.items():
+        noun_phrase = []
+        for paragraph in v:
+            doc = nlp(paragraph)
+            for token in doc.noun_chunks:
+                noun_phrase.append(token)
+        new_dict[k] = noun_phrase
+        
+    return new_dict
 
 if __name__ == '__main__':
     go()

@@ -16,6 +16,10 @@ import os
 import re
 import sys
 import spacy
+import string
+
+from os import listdir
+from os.path import isfile, join
 
 stopWords = set(stopwords.words('english'))
 stopWords.add("000")
@@ -42,11 +46,11 @@ def reading_data(PATH, filetype):
     '''
 
     speeches = {}
-
-    filepaths = glob.glob(os.path.join(str(PATH), str(filetype)))
-
-    for file in filepaths:
-        with open(file, 'r') as f:
+    onlyfiles = [f for f in listdir(PATH) if isfile(join(PATH, f))]
+    
+    for file in onlyfiles:
+        filepath = os.path.join(str(PATH), file)
+        with open(filepath, 'r') as f:
             speech = f.read().split("\n\n")
             para = [line.replace('\n', ' ') for line in speech]
             year = re.findall('(?<=_).*?(?=\.)', file)[0]
@@ -54,6 +58,46 @@ def reading_data(PATH, filetype):
             speeches[(president, year)] = para
 
     return speeches
+
+def contains_multiple_words(s):   
+    """
+    function determining if the string is more than 1 word
+    
+    input:
+        s: a string
+    output:
+        True if there are more than 1 element after applying a split function. False else.
+    """
+    if len(s.split()) > 1:
+        return True
+    else:
+        return False
+
+def clean_words(speech_dict):
+    """
+    Creates a dictionary which keys are the
+    tuple (president,year), and its value a list of
+    tokenized words without StopWords.
+    
+    Inputs: Dictionary with speeches
+    Returns: Dictionary
+    """
+
+    clean_dict = {}
+    tokenizer = RegexpTokenizer(r'\w+')
+    stopWords = set(stopwords.words('english'))
+    for k, v in speech_dict.items():
+        if k not in clean_dict:
+            clean_dict[k]= []
+        for line in v:
+            line = str(line).lower().translate(string.punctuation)
+            if contains_multiple_words(line) or line not in stopWords:
+                clean_dict[k].append([line])
+            #else:
+            #    print(line)
+                
+    clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
+    return clean_dict
 
 def chunks(dictionary):
     '''
@@ -76,21 +120,40 @@ def chunks(dictionary):
     return new_dict
 
 def combine_counts(count_dict, use_dict):
+    """
+    combines counts of current and previous paragraphs
+    
+    inputs:
+        count_dict: the dictionary of counted noun phrases from the current paragraph/speech
+        use_dict: the master dictionary that's tracking counts of all noun phrases across the entire corpus
+    outputs:
+        a dictionary with counts from count_dict and use_dict combined
+    """
+    
     for word in count_dict.keys():
-            if word in list(use_dict.keys()):
-                use_dict[word] += count_dict[word]
-                
-            else:
-                use_dict[word] = count_dict[word]
+        if word in list(use_dict.keys()):
+            use_dict[word] += count_dict[word]
+        else:
+            use_dict[word] = count_dict[word]
     
     return use_dict
 
 def top_x(data, x):
+    """
+    turns the noun phrase data into counts of noun phrases, then finds the top 1000 most stated noun phrases for the co-occurrence matrix.
+    
+    inputs:
+        data: speeches that are cleaned and preprocessed into noun phrase chunks
+        x: the number of top entires we want
+    outputs:
+        dict_use: total count dictionary
+        sorted: the top x most referenced noun phrases across all of the speeches.
+    """
 
     dict_use = {}
     counter = 1
     for n, v in enumerate(data.items()):
-        print(counter)
+        
         name = v[0]
         paragraph = v[1]
     

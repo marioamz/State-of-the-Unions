@@ -84,9 +84,10 @@ def chunks(dictionary):
         new_dict[k] = noun_phrase
         
         print(m)
-        if m == 20:
-            return new_dict
-            break
+        #if m == 20:
+        #    
+        #    break
+    return new_dict
 
 def contains_multiple_words(s):   
     """

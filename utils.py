@@ -75,15 +75,18 @@ def chunks(dictionary):
 
     nlp = spacy.load('en_core_web_sm')
 
-    for k, v in dictionary.items():
+    for m, (k, v) in enumerate(dictionary.items()):
         noun_phrase = []
-        for paragraph in v:
+        for n, paragraph in enumerate(v):
             doc = nlp(paragraph)
             for token in doc.noun_chunks:
-                noun_phrase.append(token)
+                noun_phrase.append((token, n))
         new_dict[k] = noun_phrase
         
-    return new_dict
+        print(m)
+        if m == 20:
+            return new_dict
+            break
 
 def contains_multiple_words(s):   
     """
@@ -100,6 +103,9 @@ def contains_multiple_words(s):
         return False
 
 def nltk2wn_tag(nltk_tag):
+    """
+    get POS tagging to be able to better lemmatize words
+    """
     if nltk_tag.startswith('J'):
         return wordnet.ADJ
     elif nltk_tag.startswith('V'):
@@ -112,6 +118,9 @@ def nltk2wn_tag(nltk_tag):
         return None
     
 def lemmed(token):
+    """
+    lemmatize all words
+    """
     nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))  
     wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
     res_words = []
@@ -139,14 +148,14 @@ def clean_words(speech_dict):
     whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     for n, (k, v) in enumerate(speech_dict.items()):
         if k not in clean_dict:
-            clean_dict[k]= []
-        for line in v:
-            line = str(line).lower()
-            line = ''.join(filter(whitelist.__contains__, line))   
+            clean_dict[k] = []
+        for line, para_num in v:
+            line = str(line).lower().strip()
+            line = ''.join(filter(whitelist.__contains__, line))
 
             if contains_multiple_words(line) or line not in stopWords:
                 lem_word = lemmed(line)
-                clean_dict[k].append([lem_word])
+                clean_dict[k].append([(lem_word, para_num)])
         
     clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
     return clean_dict
@@ -162,60 +171,129 @@ def count_words(data):
         dict_use: total count dictionary
         sorted: the top x most referenced noun phrases across all of the speeches.
     """
-
-    #dict_use = {}
-    
-    #for n, (name, paragraph) in enumerate(data.items()):
-    #for n, phrase in enumerate(data):
-    counts = Counter(data)        
-    #if n == 0:
-    #dict_use = counts
-    #else:
-    #dict_use = { k: dict_use.get(k, 0) + counts.get(k, 0) for k in set(dict_use) | set(dict_use) }
+    flat_list = [item[0] for sublist in data for item in sublist]
+    counts = Counter(flat_list)
     return counts
 
 def first_calc(data):
+    """
+    1. calculate linear jaccard similarity
+    """
     comparison = "america is wonderfully weird"
     diff_calcs = []
+    #list_calcs = []
     for n, l in enumerate(data.values()):
-        for word in l:
+        for word, para_num in l:
             calc = textdistance.jaccard.normalized_distance(word, comparison)
-            diff_calcs.append((word, calc))
+            diff_calcs.append((word, calc, para_num))
+        #list_calcs.append(diff_calcs)
+    
     return sorted(diff_calcs, key=lambda tup: tup[1])
 
 
 def split_list(alist, wanted_parts=1):
+    """
+    2. split the massive list into smaller lists
+    """
     length = len(alist)
     return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts] 
              for i in range(wanted_parts) ]
 
 
-def within_calcs(data):
-    diff_calcs = []
+def within_calcs(data, thresh):
+    """
+    3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
+    """
+    master_list = []
+    changed_words = {}
+
     for m, x in enumerate(data):
-        for n, (word, num) in enumerate(x):
-            for o, (compare_word, compare_num) in enumerate(x):
-                calc = textdistance.jaccard.normalized_distance(word,compare_word)
-                if calc < 0.16:
+
+        diff_calcs = []
+        
+        for n, (word, num, para_num) in enumerate(x):
+            
+            for o, (compare_word, compare_num, compare_para_num) in enumerate(x):
+                
+                calc = textdistance.jaccard.normalized_distance(word, compare_word)
+                
+                if calc == 0 & para_num == compare_para_num:
+                    diff_calcs.append((word, para_num))
+                
+                elif calc == 0 & para_num != compare_para_num:
+                    diff_calcs.append((word, compare_para_num))
+                    
+                elif (calc < thresh) & (compare_word in changed_words.values()) & (word != compare_word):
+                    #print("elif first")
+                    #print(compare_word)
+                    #print(changed_words)
+                    list_of_keys = [key for (key, value) in changed_words.items() if value == compare_word]
+                    #print(list_of_keys)
+                    diff_calcs.append((list_of_keys[0], compare_para_num))
+                    changed_words[list_of_keys[0]] = compare_word
+                    changed_words[list_of_keys[0]] = word
+                
+                elif (calc < thresh) & (word in changed_words.values()) & (word != compare_word):
+                    #print("elif second")
+                    list_of_keys = [key for (key, value) in changed_words.items() if value == word]
+                    diff_calcs.append((list_of_keys[0], compare_para_num))
+                    #print(list_of_keys[0])
+                    #print(compare_word)
+                    if list_of_keys != compare_word:
+                        #print("inside if")
+                        #print(list_of_keys[0])
+                        #print(word)
+                        #print(compare_word)
+                        #print(calc)
+                        changed_words[list_of_keys[0]] = compare_word
+                        changed_words[list_of_keys[0]] = word
+                
+                elif (calc < thresh) & (word not in [changed_words.keys()]) & (word != compare_word):
+                    #print("elif third")
+                    diff_calcs.append((word, compare_para_num))
+                    changed_words[word] = compare_word
                     #print(word)
                     #print(compare_word)
                     #print(calc)
-                    diff_calcs.append(word)
-                else:
-                    diff_calcs.append(compare_word)
-                #diff_calcs[word] = (compare_word, calc)
-        print(m)
-    return diff_calcs
+                
+                elif (calc < thresh) & (compare_word in [changed_words.keys()]) & (word != compare_word):
+                    #print(word, compare_word, "HELP")
+                    raise Exception('We should not be here. The value of compare word was: {}'.format(word))
+                    #diff_calcs.append((word, compare_para_num))
+                    #changed_words[word] = compare_word
 
-def lem_phrases(data):
-    
+                #elif (0 < calc < 0.2) & (compare_word in [i[0] for i in changed_words]):
+                #    diff_calcs.append((compare_word, compare_para_num))
+                #    changed_words[word] = compare_word
+                
+                elif (calc < thresh) & (word != compare_word):
+                    print(word, compare_word, "elif")
+                    print(word in change_words.keys(), "elif1")
+                    print(compare_word in change_words.keys(), "elif2")
+                    print(word in change_words.values(), "elif3")
+                    #print(word)
+                    print(compare_word in change_words.values(), "elif4")
+                    raise Exception('We should not be here 2. The value of compare word was: {}'.format(word))
+                    #print(compare_word)
+                    #print(changed_words)
+                else:
+                    diff_calcs.append((compare_word, compare_para_num))
+        master_list.append(diff_calcs)
+    return master_list
+
+                
+
+
+def lem_phrases(data, num_lists, thresh):
+    """
+    1. calculate linear jaccard similarity
+    2. split the massive list into smaller lists
+    3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
+ 
+    """
     diff_calcs = first_calc(data)
-    #return diff_calcs
-    #break
-    lists_split = split_list(diff_calcs, 1000)
-    print("lists split done")
-    second_diff_calcs = within_calcs(lists_split)
-    print("second diff calcs done")
+    lists_split = split_list(diff_calcs, num_lists)
+    second_diff_calcs = within_calcs(lists_split, thresh)
     
     return second_diff_calcs
 
@@ -223,7 +301,16 @@ def lem_phrases(data):
     
 
 def top_x(dict_use, x):
+    """
+    sort and take only top 1000 words/noun phrases
+    """
     return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
+
+def limit(lem_data, top_words_data):
+    """
+    limit the noun phrases by speech and paragraph down to top 1000 words/noun phrases only
+    """
+    return [item for item in lem_data if item[0] not in top_words_data]
 
 
 def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):

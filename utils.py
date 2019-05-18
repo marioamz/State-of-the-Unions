@@ -190,6 +190,15 @@ def top_x(dict_use, x):
     
     #return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
 
+def limit(full_data, top_words_data):
+    """
+    limit the noun phrases by speech and paragraph down to top 1000 words/noun phrases only
+    """
+    for n, x in enumerate(full_data.keys()):
+        new_list = [item for item in full_data[x] if item[0] in top_words_data]
+        full_data[x] = new_list 
+    
+    return full_data
 
 def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
     

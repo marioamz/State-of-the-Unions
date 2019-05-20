@@ -18,13 +18,13 @@ import re
 import sys
 import spacy
 import string
-
+from operator import itemgetter
 from os import listdir
 from os.path import isfile, join
-
+import pandas as pd
 import textdistance
 from itertools import groupby, chain
-
+from collections import OrderedDict
 stopWords = set(stopwords.words('english'))
 stopWords.add("000")
 tokenizer = RegexpTokenizer(r'\w+')
@@ -200,6 +200,25 @@ def limit(full_data, top_words_data):
     
     return full_data
 
+def convert_dict_to_list(dictionary):
+    """ it creates a list of lists in which each list is a paragraph
+    coming from a speech 
+    Inputs: Dictionary of tuples (President, year): list of tuples (word, pagraph number )
+    Returns: List of lists"""
+    
+    list_document=[]
+    for key, value in dictionary.items():
+        #print(key)
+        if len(value)>0:
+            for i in range((max(value,key = itemgetter(1))[1]) +1):
+                ls=[]
+                for noun in value:
+                    if noun[1]==i:
+                        ls.append(noun[0])
+                if len(ls)>0:
+                    list_document.append(ls)
+    return list_document
+
 def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
     
     '''Creates a co-occurence matrix with the noun-phrases
@@ -245,6 +264,38 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
         df.to_csv("co_occurence.csv", sep = ",")   
     return df
 
+def co_oc_matrix(documents, dataframe=False, csv=False):
+    
+    '''Creates a co-occurence matrix with the noun-phrases
+    that appear in each paragraph of each speech. 
+    Inputs (list of lists): list of noun phrases (each paragraph is a list)
+    dataframe (boolean): if true, returns a dataframe
+    csv (boolean) : if true, writes a csv file with the name "co_occurence.csv" 
+    '''
+    noun_set=[]
+    for ls in documents:
+        for noun in ls:
+            if noun not in noun_set:
+                noun_set.append(noun)
+    # OrderedDict to count each occurence in each paragraph
+    occurrences = OrderedDict(((noun), OrderedDict(((noun), 0) for noun in noun_set)) for noun in (noun_set))
+
+    # Find the co-occurrences:
+    for l in documents:
+        for i in range(len(l)):
+            for item in l[:i] + l[i + 1:]:
+                occurrences[l[i]][item] += 1
+    rows = []
+    columns=[]
+    for noun, values in occurrences.items():
+        #print(name, ' '.join(str(i) for i in values.values()))
+        columns.append(noun)
+        rows.append(values.values())
+    if dataframe:
+        df = pd.DataFrame(list(rows), columns=columns, index=columns) 
+    if csv:
+        df.to_csv("co_occurence.csv", sep = ",")   
+    return df
 def spacy_fxn_ls(strings):
     """Returns a list of noun phrases
     Inputs: string

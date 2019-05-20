@@ -292,10 +292,13 @@ def co_oc_matrix(documents, dataframe=False, csv=False):
         columns.append(noun)
         rows.append(values.values())
     if dataframe:
-        df = pd.DataFrame(list(rows), columns=columns, index=columns) 
+        df = pd.DataFrame(list(rows), columns=columns, index=columns)
+        for column in columns:
+            df.at[column, column] = 1
     if csv:
         df.to_csv("co_occurence.csv", sep = ",")   
     return df
+
 def spacy_fxn_ls(strings):
     """Returns a list of noun phrases
     Inputs: string

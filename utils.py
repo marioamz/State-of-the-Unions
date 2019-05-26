@@ -72,6 +72,7 @@ def reading_data(PATH, filetype):
 
     return speeches
 
+
 def chunks(dictionary):
     '''
     This function takes in a dictionary of speeches and creates
@@ -96,6 +97,7 @@ def chunks(dictionary):
         #    break
     return new_dict
 
+
 def contains_multiple_words(s):
     """
     function determining if the string is more than 1 word
@@ -105,15 +107,18 @@ def contains_multiple_words(s):
     output:
         True if there are more than 1 element after applying a split function. False else.
     """
+
     if len(s.split()) > 1:
         return True
     else:
         return False
 
+
 def nltk2wn_tag(nltk_tag):
     """
     get POS tagging to be able to better lemmatize words
     """
+
     if nltk_tag.startswith('J'):
         return wordnet.ADJ
     elif nltk_tag.startswith('V'):
@@ -125,10 +130,12 @@ def nltk2wn_tag(nltk_tag):
     else:
         return None
 
+
 def lemmed(token):
     """
     lemmatize all words
     """
+
     nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))
     wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
     res_words = []
@@ -141,6 +148,7 @@ def lemmed(token):
 
     return " ".join(res_words)
 
+
 def clean_words(speech_dict):
     """
     Creates a dictionary which keys are the
@@ -150,10 +158,12 @@ def clean_words(speech_dict):
     Inputs: Dictionary with speeches
     Returns: Dictionary
     """
+
     clean_dict = {}
     tokenizer = RegexpTokenizer(r'\w+')
     stopWords = set(stopwords.words('english'))
     whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
     for n, (k, v) in enumerate(speech_dict.items()):
         if k not in clean_dict:
             clean_dict[k] = []
@@ -166,7 +176,9 @@ def clean_words(speech_dict):
                 clean_dict[k].append([(lem_word, para_num)])
 
     clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
+
     return clean_dict
+
 
 def count_words(data):
     """
@@ -179,14 +191,18 @@ def count_words(data):
         dict_use: total count dictionary
         sorted: the top x most referenced noun phrases across all of the speeches.
     """
+
     list_of_words = []
+
     for n, x in enumerate(data.values()):
         first_words = [i[0] for i in x]
         list_of_words = list_of_words + first_words
         #print(n)
     #print(list_of_words)
     counts = Counter(list_of_words)
+
     return counts
+
 
 def top_x(dict_use, x):
     """
@@ -197,15 +213,18 @@ def top_x(dict_use, x):
 
     #return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
 
+
 def limit(full_data, top_words_data):
     """
     limit the noun phrases by speech and paragraph down to top 1000 words/noun phrases only
     """
+
     for n, x in enumerate(full_data.keys()):
         new_list = [item for item in full_data[x] if item[0] in top_words_data]
         full_data[x] = new_list
 
     return full_data
+
 
 def convert_dict_to_list(dictionary):
     """ it creates a list of lists in which each list is a paragraph
@@ -214,6 +233,7 @@ def convert_dict_to_list(dictionary):
     Returns: List of lists"""
 
     list_document=[]
+
     for key, value in dictionary.items():
         #print(key)
         if len(value)>0:
@@ -226,6 +246,7 @@ def convert_dict_to_list(dictionary):
                     list_document.append(ls)
     return list_document
 
+
 def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
 
     '''Creates a co-occurence matrix with the noun-phrases
@@ -234,11 +255,15 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
     dataframe (boolean): if true, returns a dataframe
     csv (boolean) : if true, writes a csv file with the name "co_occurence.csv"
     '''
+
     list_of_paragraphs=[]
+
     for speech in list(dictionary_of_speeches.values()):
         for paragraph in speech:
             list_of_paragraphs.append(paragraph)
+
     documents=[]
+
     for paragraph in list_of_paragraphs:
         nouns = spacy_fxn_ls (paragraph)
         list_of_nouns=[]
@@ -247,6 +272,7 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
         documents.append(list_of_nouns)
 
     noun_set=[]
+
     for ls in documents:
         for noun in ls:
             if noun not in noun_set:
@@ -259,8 +285,10 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
         for i in range(len(l)):
             for item in l[:i] + l[i + 1:]:
                 occurrences[l[i]][item] += 1
+
     rows = []
     columns=[]
+
     for noun, values in occurrences.items():
         #print(name, ' '.join(str(i) for i in values.values()))
         columns.append(noun)
@@ -269,6 +297,7 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
         df = pd.DataFrame(list(rows), columns=columns, index=columns)
     if csv:
         df.to_csv("co_occurence.csv", sep = ",")
+
     return df
 
 def co_oc_matrix(documents, dataframe=False, csv=False):
@@ -279,7 +308,9 @@ def co_oc_matrix(documents, dataframe=False, csv=False):
     dataframe (boolean): if true, returns a dataframe
     csv (boolean) : if true, writes a csv file with the name "co_occurence.csv"
     '''
+
     noun_set=[]
+
     for ls in documents:
         for noun in ls:
             if noun not in noun_set:
@@ -294,6 +325,7 @@ def co_oc_matrix(documents, dataframe=False, csv=False):
                 occurrences[l[i]][item] += 1
     rows = []
     columns=[]
+
     for noun, values in occurrences.items():
         #print(name, ' '.join(str(i) for i in values.values()))
         columns.append(noun)
@@ -306,16 +338,19 @@ def co_oc_matrix(documents, dataframe=False, csv=False):
         df.to_csv("co_occurence.csv", sep = ",")
     return df
 
+
 def spacy_fxn_ls(strings):
     """Returns a list of noun phrases
     Inputs: string
     Returns: list"""
     nlp = spacy.load('en_core_web_sm')
     doc = nlp(strings)
+
     l = []
     for token in doc.noun_chunks:
         l.append(token)
     print(l)
+
     return l
 
 def pairwise_similarity(excel, method):
@@ -346,49 +381,50 @@ def pairwise_similarity(excel, method):
 
     return co_matrix
 
-    def network_graph(df, method):
-        '''
-        This graph takes the pairwise co-occurrence matrix and returns
-        a network where the nodes are noun phrases and the edges are their
-        similarity to each other.
+def network_graph(df, method):
+    '''
+    This graph takes the pairwise co-occurrence matrix and returns
+    a network where the nodes are noun phrases and the edges are their
+    similarity to each other.
 
-        It also returns a list of clusters, with the words that made it up.
-        '''
+    It also returns a list of clusters, with the words that made it up.
+    '''
 
-        clusters = []
-        # establish graph
-        graph = nx.DiGraph(df)
+    clusters = []
+    # establish graph
+    graph = nx.DiGraph(df)
 
-        edges,weights = zip(*nx.get_edge_attributes(graph,'weight').items())
+    edges,weights = zip(*nx.get_edge_attributes(graph,'weight').items())
 
-        if method = 'community'
-        #first compute the best partition
-            partition = community.best_partition(graph)
+    if method = 'community'
+         #first compute the best partition
+         partition = community.best_partition(graph)
 
-        else:
+    else:
         # first calculate k-means unsupervised
-            kmeans = cluster.KMeans(n_clusters = 8).fit(df)
-            sim['scores'] = kmeans.labels_
-            partition = df['scores'].to_dict()
+        kmeans = cluster.KMeans(n_clusters = 8).fit(df)
+        df['scores'] = kmeans.labels_
+        partition = df['scores'].to_dict()
 
-        #drawing
-        size = float(len(set(partition.values())))
-        pos = nx.kamada_kawai_layout(graph)
-        count = 0.
-        for com in set(partition.values()):
-            count = count + 1.
-            list_nodes = [nodes for nodes in partition.keys()
-                                        if partition[nodes] == com]
-            clusters.append(list_nodes)
-            nx.draw_networkx_nodes(graph, pos, list_nodes, node_size = 20,
-                                        node_color = str(count / size))
+    #drawing
+    size = float(len(set(partition.values())))
+    pos = nx.kamada_kawai_layout(graph)
+    count = 0.
 
-        nx.draw_networkx_edges(graph, pos, alpha=0.2, edge_color = weights)
-        nx.draw_networkx_labels(graph, pos, font_size = 4, alpha = 0.6)
-        #plt.figure(figsize=(100,100))
-        plt.savefig("testgraph.png", dpi=500)
+    for com in set(partition.values()):
+        count = count + 1.
+        list_nodes = [nodes for nodes in partition.keys()
+                                            if partition[nodes] == com]
+        clusters.append(list_nodes)
+        nx.draw_networkx_nodes(graph, pos, list_nodes, node_size = 20,
+                                            node_color = str(count / size))
 
-        return clusters
+    nx.draw_networkx_edges(graph, pos, alpha=0.2, edge_color = weights)
+    nx.draw_networkx_labels(graph, pos, font_size = 4, alpha = 0.6)
+    #plt.figure(figsize=(100,100))
+    plt.savefig("testgraph.png", dpi=500)
+
+    return clusters
 
 
 if __name__ == '__main__':

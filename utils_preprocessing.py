@@ -1,6 +1,6 @@
 # Script for reading in the data
 
-import utils_local as ut
+#import utils_local as ut
 import importlib
 importlib.reload(ut)
 import nltk

@@ -355,7 +355,8 @@ def calc_sum(full_data, combo_data, years_data):
 
 def periodization(tfidf_data):
     
-    tfidf_data.index = tfidf_data.index.get_level_values(1)
+    #tfidf_data.index = tfidf_data.index.get_level_values(0)
+    tfidf_data.index = tfidf_data.index.droplevel(1)
     tfidf_data = tfidf_data.sort_index().fillna(0).drop("1790")
     years = tfidf_data.index
     cos_sim = cosine_similarity(tfidf_data)
@@ -371,11 +372,11 @@ def periodization(tfidf_data):
         else:
             before = years[:n] 
             before_combo = list(itertools.combinations(before, 2))
-            before_sum = ut.calc_sum(sim_df, before_combo, before)
+            before_sum = calc_sum(sim_df, before_combo, before)
             
             after = years[n:]
             after_combo = list(itertools.combinations(after, 2))
-            after_sum = ut.calc_sum(sim_df, after_combo, after)
+            after_sum = calc_sum(sim_df, after_combo, after)
             
             weighted_avg = ((len(before)*before_sum) + (len(after)*after_sum))/(len(years))
             

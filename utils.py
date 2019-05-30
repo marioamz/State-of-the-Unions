@@ -396,7 +396,7 @@ def network_graph(df, method):
 
     edges,weights = zip(*nx.get_edge_attributes(graph,'weight').items())
 
-    if method = 'community'
+    if method == 'community'
          #first compute the best partition
          partition = community.best_partition(graph)
 

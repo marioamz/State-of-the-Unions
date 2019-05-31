@@ -1,8 +1,8 @@
 # Script for reading in the data
 
-import utils as ut
+import utils_preprocessing as up
 import importlib
-importlib.reload(ut)
+importlib.reload(up)
 import nltk
 from collections import Counter
 from nltk.tokenize import sent_tokenize, word_tokenize
@@ -23,6 +23,8 @@ import pandas as pd
 from collections import Counter
 import math
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn import preprocessing
+min_max_scaler = preprocessing.MinMaxScaler()
 
 from os import listdir
 from os.path import isfile, join
@@ -68,7 +70,8 @@ def reading_data(PATH, filetype):
             para = [line.replace('\n', ' ') for line in speech]
             year = re.findall('(?<=_).*?(?=\.)', file)[0]
             president = re.findall('([^/.]+)(?=_)', file)[0]
-            speeches[(president, year)] = para
+            if year != "1790":
+                speeches[(president, year)] = para
 
     return speeches
 
@@ -168,8 +171,6 @@ def clean_words(speech_dict):
             if contains_multiple_words(line) or line not in stopWords:
                 lem_word = lemmed(line)
                 clean_dict[k].append([(lem_word, para_num)])
-        #if n%5 == 0:
-            #print(n)
     
     clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
     return clean_dict
@@ -216,35 +217,23 @@ def within_calcs(data, thresh):
             for compare_word_n, compare_word in enumerate(data):
                 if len(compare_word) > 0:
                     calc = jaccard(word, compare_word)
-                    #print(word in [item for sublist in changed_words.values() for item in sublist])
                     
                     if (calc > thresh) & (word != compare_word) & (word in changed_words.keys()):
-                        #print("elif 1")
                         changed_words[word].append(compare_word)
             
                     elif (calc > thresh) & (word != compare_word) & (word in [b for a in changed_words.values() for b in a]):
-                        #print("elif 2", [b for a in changed_words.values() for b in a])
                         k = [key for key, value in changed_words.items() if word in value]
-                        #print(k[0])
-                        #list(changed_words.keys())[list(changed_words.values()).index(word)]
-                        #print(k)
                         changed_words[k[0]].append(compare_word)
             
                     elif (calc > thresh) & (word != compare_word) & (compare_word in changed_words.keys()):
-                        #print("elif 4")
                         changed_words[compare_word].append(word)
                 
                     elif (calc > thresh) & (word != compare_word) & (compare_word in [b for a in changed_words.values() for b in a]):
-                        #print("elif 3", [b for a in changed_words.values() for b in a])
                         k = [key for key, value in changed_words.items() if compare_word in value]
-                        #list(changed_words.keys())[list(changed_words.values()).index(compare_word)]
                         changed_words[k[0]].append(word)
             
                     elif (calc > thresh) & (word != compare_word):
-                        #print(word, compare_word, "elif 5")
                         changed_words[word] = [compare_word]
-                        #print([key for key, value in changed_words.items() if compare_word in value], compare_word, "compare")
-                        #print([key for key, value in changed_words.items() if word in value], word, "word")
         
     return changed_words
 
@@ -257,24 +246,18 @@ def word_changes(data, thresh, num_lists):
  
     """
     flat_list = set(item[0] for sublist in data.values() for item in sublist)
-    #print(len(flat_list))
     diff_calcs = first_calc(flat_list)
     lists_split = split_list(diff_calcs, num_lists)
     result = {}
     for n, l in enumerate(lists_split):
-        #print(n)
         l_1 = [item[0] for item in l]
         second_diff_calcs = within_calcs(l_1, thresh)
         result = {**result, **second_diff_calcs}
-        
-        #if n%5 == 0:
-            #print(n)
             
     return result
 
 def lemmed_phrases(changed_data, clean_data):
     flat_list = set(item for sublist in changed_data.values() for item in sublist)
-    #print(flat_list)
 
     for n, entry in enumerate(clean_data):
         words_list = [item[0] for item in clean_data[entry]]
@@ -323,6 +306,9 @@ def limit(full_data, top_words_data):
     return full_data
 
 def corpus_tfidf(limited_data, counted_data, top_data):
+    """
+    calculates tfidfs across the corpus
+    """
     index = top_data
     columns = limited_data.keys()
     df = pd.DataFrame(index=index, columns=columns)
@@ -337,14 +323,22 @@ def corpus_tfidf(limited_data, counted_data, top_data):
         df1.rename(columns={0:x}, inplace=True)
         df.update(df1) 
         for m, (index, row) in enumerate(df.iterrows()):
-            df[x][index] = df[x][index]*(math.log(len(columns)/counted_data[index]))
+            if counted_data[index] > 0:
+                df[x][index] = df[x][index]*(math.log(len(columns)/counted_data[index]))
+            else:
+                df[x][index] = 0
         
         
         df[x] = (df[x]/df[x].sum(0))
     return df.T
 
 
-def calc_sum(full_data, combo_data, years_data):
+def calc_sum(full_data, years_data):
+    """
+    calculates sums across combos of years
+    """
+    combo_data = list(itertools.combinations(years_data, 2))
+    
     total = 0
     for n, item in enumerate(combo_data):
         a = full_data.at[item[0], item[1]]
@@ -353,14 +347,18 @@ def calc_sum(full_data, combo_data, years_data):
     
     return total
 
+
+
 def periodization(tfidf_data):
-    
-    #tfidf_data.index = tfidf_data.index.get_level_values(0)
-    tfidf_data.index = tfidf_data.index.droplevel(1)
-    tfidf_data = tfidf_data.sort_index().fillna(0).drop("1790")
+    """
+    calculates stuff from the paper to find distinct periods
+    """
+    tfidf_data.index = tfidf_data.index.droplevel(0)
+    tfidf_data = tfidf_data.sort_index().fillna(0)
     years = tfidf_data.index
-    cos_sim = cosine_similarity(tfidf_data)
-    sim_df = pd.DataFrame(cos_sim).round(5).sub(1)
+    cos_sim = 1-cosine_similarity(tfidf_data)
+    cos_sim = min_max_scaler.fit_transform(cos_sim)
+    sim_df = pd.DataFrame(cos_sim)
     sim_df.columns = years
     sim_df.index = years
     
@@ -371,18 +369,16 @@ def periodization(tfidf_data):
             pass
         else:
             before = years[:n] 
-            before_combo = list(itertools.combinations(before, 2))
-            before_sum = calc_sum(sim_df, before_combo, before)
+            before_sum = calc_sum(sim_df, before)
             
             after = years[n:]
-            after_combo = list(itertools.combinations(after, 2))
-            after_sum = calc_sum(sim_df, after_combo, after)
+            after_sum = calc_sum(sim_df, after)
             
             weighted_avg = ((len(before)*before_sum) + (len(after)*after_sum))/(len(years))
             
             save_dict[year] = weighted_avg
     
-    return save_dict
+    return save_dict, sim_df
 
 
 if __name__ == '__main__':

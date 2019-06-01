@@ -113,6 +113,7 @@ def contains_multiple_words(s):
     output:
         True if there are more than 1 element after applying a split function. False else.
     """
+
     if len(s.split()) > 1:
         return True
     else:
@@ -123,6 +124,7 @@ def nltk2wn_tag(nltk_tag):
     """
     get POS tagging to be able to better lemmatize words
     """
+
     if nltk_tag.startswith('J'):
         return wordnet.ADJ
     elif nltk_tag.startswith('V'):
@@ -139,6 +141,7 @@ def lemmed(token):
     """
     lemmatize all words
     """
+
     nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))
     wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
     res_words = []
@@ -161,10 +164,12 @@ def clean_words(speech_dict):
     Inputs: Dictionary with speeches
     Returns: Dictionary
     """
+
     clean_dict = {}
     tokenizer = RegexpTokenizer(r'\w+')
     stopWords = set(stopwords.words('english'))
     whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
     for n, (k, v) in enumerate(speech_dict.items()):
         if k not in clean_dict:
             clean_dict[k] = []
@@ -177,10 +182,17 @@ def clean_words(speech_dict):
                 clean_dict[k].append([(lem_word, para_num)])
 
     clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
+
     return clean_dict
 
 
 def jaccard(a, b):
+    '''
+    This function takes the jaccard similarity between two
+    noun phrases in order to return their distance to each
+    other.
+    '''
+
     a_set = set(a.split())
     b_set = set(b.split())
     c = a_set.intersection(b_set)
@@ -192,6 +204,7 @@ def first_calc(data):
     """
     1. calculate linear jaccard similarity
     """
+
     comparison = "america is wonderfully weird"
     diff_calcs = []
     for word in data:
@@ -205,6 +218,7 @@ def split_list(alist, wanted_parts=1):
     """
     2. split the massive list into smaller lists
     """
+
     length = len(alist)
     return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts]
              for i in range(wanted_parts) ]
@@ -214,6 +228,7 @@ def within_calcs(data, thresh):
     """
     3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
     """
+
     changed_words = {}
 
     for word_n, word in enumerate(data):
@@ -247,8 +262,8 @@ def word_changes(data, thresh, num_lists):
     1. calculate linear jaccard similarity
     2. split the massive list into smaller lists
     3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
-
     """
+
     flat_list = set(item[0] for sublist in data.values() for item in sublist)
     diff_calcs = first_calc(flat_list)
     lists_split = split_list(diff_calcs, num_lists)
@@ -260,7 +275,13 @@ def word_changes(data, thresh, num_lists):
 
     return result
 
+
 def lemmed_phrases(changed_data, clean_data):
+    '''
+    This function takes in phrases and lems the words in
+    it.
+    '''
+
     flat_list = set(item for sublist in changed_data.values() for item in sublist)
 
     for n, entry in enumerate(clean_data):
@@ -270,6 +291,7 @@ def lemmed_phrases(changed_data, clean_data):
                 k = [key for key, value in changed_data.items() if word in value]
                 clean_data[entry] = [(k[0], item[1]) if item[0]==word else item for item in clean_data[entry]]
     return clean_data
+
 
 def count_words(data):
     """
@@ -282,6 +304,7 @@ def count_words(data):
         dict_use: total count dictionary
         sorted: the top x most referenced noun phrases across all of the speeches.
     """
+
     list_of_words = []
     for n, x in enumerate(data):
         d = data[x]
@@ -296,6 +319,7 @@ def top_x(dict_use, x):
     """
     sort and take only top 1000 words/noun phrases
     """
+
     return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
 
 
@@ -303,6 +327,7 @@ def limit(full_data, top_words_data):
     """
     limit the noun phrases by speech and paragraph down to top 1000 words/noun phrases only
     """
+
     for n, x in enumerate(full_data.keys()):
         new_list = [item for item in full_data[x] if item[0] in top_words_data]
         full_data[x] = new_list
@@ -313,6 +338,7 @@ def corpus_tfidf(limited_data, counted_data, top_data):
     """
     calculates tfidfs across the corpus
     """
+
     index = top_data
     columns = limited_data.keys()
     df = pd.DataFrame(index=index, columns=columns)
@@ -334,6 +360,7 @@ def corpus_tfidf(limited_data, counted_data, top_data):
 
 
         df[x] = (df[x]/df[x].sum(0))
+
     return df.T
 
 
@@ -341,6 +368,7 @@ def calc_sum(full_data, years_data):
     """
     calculates sums across combos of years
     """
+
     combo_data = list(itertools.combinations(years_data, 2))
 
     total = 0
@@ -357,6 +385,7 @@ def periodization(tfidf_data):
     """
     calculates stuff from the paper to find distinct periods
     """
+    
     tfidf_data.index = tfidf_data.index.droplevel(0)
     tfidf_data = tfidf_data.sort_index().fillna(0)
     years = tfidf_data.index

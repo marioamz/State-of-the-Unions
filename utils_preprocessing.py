@@ -62,7 +62,7 @@ def reading_data(PATH, filetype):
 
     speeches = {}
     onlyfiles = [f for f in listdir(PATH) if isfile(join(PATH, f))]
-    
+
     for file in onlyfiles:
         filepath = os.path.join(str(PATH), file)
         with open(filepath, 'r') as f:
@@ -73,7 +73,11 @@ def reading_data(PATH, filetype):
             if year != "1790":
                 speeches[(president, year)] = para
 
-    return speeches
+    su = 0
+    for i, x in speeches.items():
+        su = su + len(x)
+
+    return speeches, su
 
 
 def chunks(dictionary):
@@ -93,17 +97,17 @@ def chunks(dictionary):
             for token in doc.noun_chunks:
                 noun_phrase.append((token, n))
         new_dict[k] = noun_phrase
-        
+
         #print(m)
         #if m == 20:
         #    break
     return new_dict
 
 
-def contains_multiple_words(s):   
+def contains_multiple_words(s):
     """
     function determining if the string is more than 1 word
-    
+
     input:
         s: a string
     output:
@@ -114,7 +118,7 @@ def contains_multiple_words(s):
     else:
         return False
 
-    
+
 def nltk2wn_tag(nltk_tag):
     """
     get POS tagging to be able to better lemmatize words
@@ -127,24 +131,24 @@ def nltk2wn_tag(nltk_tag):
         return wordnet.NOUN
     elif nltk_tag.startswith('R'):
         return wordnet.ADV
-    else:          
+    else:
         return None
 
-    
+
 def lemmed(token):
     """
     lemmatize all words
     """
-    nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))  
+    nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))
     wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
     res_words = []
-    
+
     for word, tag in wn_tagged:
-        if tag is None:            
+        if tag is None:
             res_words.append(word)
         else:
             res_words.append(lemmatizer.lemmatize(word, tag))
-            
+
     return " ".join(res_words)
 
 
@@ -153,7 +157,7 @@ def clean_words(speech_dict):
     Creates a dictionary which keys are the
     tuple (president,year), and its value a list of
     tokenized words without StopWords.
-    
+
     Inputs: Dictionary with speeches
     Returns: Dictionary
     """
@@ -171,7 +175,7 @@ def clean_words(speech_dict):
             if contains_multiple_words(line) or line not in stopWords:
                 lem_word = lemmed(line)
                 clean_dict[k].append([(lem_word, para_num)])
-    
+
     clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
     return clean_dict
 
@@ -183,7 +187,7 @@ def jaccard(a, b):
     if (len(a_set) + len(b_set) - len(c)) > 0:
         return float(len(c)) / (len(a_set) + len(b_set) - len(c))
 
-    
+
 def first_calc(data):
     """
     1. calculate linear jaccard similarity
@@ -193,7 +197,7 @@ def first_calc(data):
     for word in data:
             calc = textdistance.jaccard.normalized_distance(word, comparison)
             diff_calcs.append((word, calc))
-    
+
     return sorted(diff_calcs, key=lambda tup: tup[1])
 
 
@@ -202,7 +206,7 @@ def split_list(alist, wanted_parts=1):
     2. split the massive list into smaller lists
     """
     length = len(alist)
-    return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts] 
+    return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts]
              for i in range(wanted_parts) ]
 
 
@@ -211,30 +215,30 @@ def within_calcs(data, thresh):
     3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
     """
     changed_words = {}
-    
+
     for word_n, word in enumerate(data):
         if len(word) > 0:
             for compare_word_n, compare_word in enumerate(data):
                 if len(compare_word) > 0:
                     calc = jaccard(word, compare_word)
-                    
+
                     if (calc > thresh) & (word != compare_word) & (word in changed_words.keys()):
                         changed_words[word].append(compare_word)
-            
+
                     elif (calc > thresh) & (word != compare_word) & (word in [b for a in changed_words.values() for b in a]):
                         k = [key for key, value in changed_words.items() if word in value]
                         changed_words[k[0]].append(compare_word)
-            
+
                     elif (calc > thresh) & (word != compare_word) & (compare_word in changed_words.keys()):
                         changed_words[compare_word].append(word)
-                
+
                     elif (calc > thresh) & (word != compare_word) & (compare_word in [b for a in changed_words.values() for b in a]):
                         k = [key for key, value in changed_words.items() if compare_word in value]
                         changed_words[k[0]].append(word)
-            
+
                     elif (calc > thresh) & (word != compare_word):
                         changed_words[word] = [compare_word]
-        
+
     return changed_words
 
 
@@ -243,7 +247,7 @@ def word_changes(data, thresh, num_lists):
     1. calculate linear jaccard similarity
     2. split the massive list into smaller lists
     3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
- 
+
     """
     flat_list = set(item[0] for sublist in data.values() for item in sublist)
     diff_calcs = first_calc(flat_list)
@@ -253,7 +257,7 @@ def word_changes(data, thresh, num_lists):
         l_1 = [item[0] for item in l]
         second_diff_calcs = within_calcs(l_1, thresh)
         result = {**result, **second_diff_calcs}
-            
+
     return result
 
 def lemmed_phrases(changed_data, clean_data):
@@ -270,7 +274,7 @@ def lemmed_phrases(changed_data, clean_data):
 def count_words(data):
     """
     turns the noun phrase data into counts of noun phrases, then finds the top 1000 most stated noun phrases for the co-occurrence matrix.
-    
+
     inputs:
         data: speeches that are cleaned and preprocessed into noun phrase chunks
         x: the number of top entires we want
@@ -285,7 +289,7 @@ def count_words(data):
         list_of_words = list_of_words + first_words
 
     counts = Counter(list_of_words)
-    return counts   
+    return counts
 
 
 def top_x(dict_use, x):
@@ -301,8 +305,8 @@ def limit(full_data, top_words_data):
     """
     for n, x in enumerate(full_data.keys()):
         new_list = [item for item in full_data[x] if item[0] in top_words_data]
-        full_data[x] = new_list 
-    
+        full_data[x] = new_list
+
     return full_data
 
 def corpus_tfidf(limited_data, counted_data, top_data):
@@ -321,14 +325,14 @@ def corpus_tfidf(limited_data, counted_data, top_data):
         #print(c)
         df1 = pd.DataFrame.from_dict(c, orient='index')
         df1.rename(columns={0:x}, inplace=True)
-        df.update(df1) 
+        df.update(df1)
         for m, (index, row) in enumerate(df.iterrows()):
             if counted_data[index] > 0:
                 df[x][index] = df[x][index]*(math.log(len(columns)/counted_data[index]))
             else:
                 df[x][index] = 0
-        
-        
+
+
         df[x] = (df[x]/df[x].sum(0))
     return df.T
 
@@ -338,13 +342,13 @@ def calc_sum(full_data, years_data):
     calculates sums across combos of years
     """
     combo_data = list(itertools.combinations(years_data, 2))
-    
+
     total = 0
     for n, item in enumerate(combo_data):
         a = full_data.at[item[0], item[1]]
         b = a/(len(years_data)*len(years_data)-1)
         total += b
-    
+
     return total
 
 
@@ -361,23 +365,23 @@ def periodization(tfidf_data):
     sim_df = pd.DataFrame(cos_sim)
     sim_df.columns = years
     sim_df.index = years
-    
+
     save_dict = {}
 
     for n, year in enumerate(years):
         if n < 2 or n > len(years)-2:
             pass
         else:
-            before = years[:n] 
+            before = years[:n]
             before_sum = calc_sum(sim_df, before)
-            
+
             after = years[n:]
             after_sum = calc_sum(sim_df, after)
-            
+
             weighted_avg = ((len(before)*before_sum) + (len(after)*after_sum))/(len(years))
-            
+
             save_dict[year] = weighted_avg
-    
+
     return save_dict, sim_df
 
 

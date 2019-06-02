@@ -79,8 +79,58 @@ def reading_data(PATH, filetype):
 
     return speeches, su
 
+def nltk2wn_tag(nltk_tag):
+    """
+    get POS tagging to be able to better lemmatize words
+    """
 
-def chunks(dictionary):
+    if nltk_tag.startswith('J'):
+        return wordnet.ADJ
+    elif nltk_tag.startswith('V'):
+        return wordnet.VERB
+    elif nltk_tag.startswith('N'):
+        return wordnet.NOUN
+    elif nltk_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return None
+
+def use_regex(paragraph, num):
+    grammar = "NP: {<DT>?<JJ.*><NN.*>+}"
+    cp = nltk.RegexpParser(grammar)  
+    
+    sentences = nltk.sent_tokenize(paragraph)
+    sentences = [nltk.word_tokenize(sent) for sent in sentences]
+    sentences = [nltk.pos_tag(sent) for sent in sentences]
+    noun_phrase = []
+    
+    for sentence in sentences:
+        result = cp.parse(sentence)
+        for word in result:
+            if type(word) == tuple:
+                np = word[0].lower().translate(str.maketrans('', '', string.punctuation))
+                if (nltk2wn_tag(word[1]) is not None) and np not in stopWords and len(np)>0:
+                    noun_phrase.append((lemmatizer.lemmatize(np, nltk2wn_tag(word[1])), num))
+                elif np not in stopWords and len(np)>0:
+                    noun_phrase.append((lemmatizer.lemmatize(np), num))
+            else:
+                np_list = []
+                for w in word:
+                    w1 = w[0].lower().translate(str.maketrans('', '', string.punctuation))
+                    if nltk2wn_tag(w[1]) == None:
+                        #print(w1, w[1])
+                        np_list.append(lemmatizer.lemmatize(w1))
+                    else:
+                        np_list.append(lemmatizer.lemmatize(w1, nltk2wn_tag(w[1])))
+                                
+                if len(np_list) > 0:
+                    noun_phrase.append((" ".join(np_list), num))
+                
+    return noun_phrase
+                    
+    
+    
+def chunks(dictionary, noun_phrase_type):
     '''
     This function takes in a dictionary of speeches and creates
     noun phrase observations for each.
@@ -88,19 +138,31 @@ def chunks(dictionary):
 
     new_dict = {}
 
-    nlp = spacy.load('en_core_web_sm')
-
     for m, (k, v) in enumerate(dictionary.items()):
-        noun_phrase = []
-        for n, paragraph in enumerate(v):
-            doc = nlp(paragraph)
-            for token in doc.noun_chunks:
-                noun_phrase.append((token, n))
-        new_dict[k] = noun_phrase
+        
+        if noun_phrase_type == "spacy":
+            noun_phrase = []
+            nlp = spacy.load('en_core_web_sm')
+            
+            for n, paragraph in enumerate(v):
+                doc = nlp(paragraph)
+                
+                for token in doc.noun_chunks:
+                    noun_phrase.append((token, n))
+                    
+            new_dict[k] = noun_phrase
 
-        #print(m)
-        #if m == 20:
-        #    break
+        elif noun_phrase_type == "regex":
+            for n, paragraph in enumerate(v):
+                if  n == 0:
+                    new_dict[k] = use_regex(paragraph, n)
+                else:
+                    new_dict[k] += use_regex(paragraph, n)
+                    #print(new_dict)
+            
+        else:
+            print("pleas use 'spacy' or 'regex'")
+    
     return new_dict
 
 
@@ -118,23 +180,6 @@ def contains_multiple_words(s):
         return True
     else:
         return False
-
-
-def nltk2wn_tag(nltk_tag):
-    """
-    get POS tagging to be able to better lemmatize words
-    """
-
-    if nltk_tag.startswith('J'):
-        return wordnet.ADJ
-    elif nltk_tag.startswith('V'):
-        return wordnet.VERB
-    elif nltk_tag.startswith('N'):
-        return wordnet.NOUN
-    elif nltk_tag.startswith('R'):
-        return wordnet.ADV
-    else:
-        return None
 
 
 def lemmed(token):
@@ -236,23 +281,25 @@ def within_calcs(data, thresh):
             for compare_word_n, compare_word in enumerate(data):
                 if len(compare_word) > 0:
                     calc = jaccard(word, compare_word)
+                    #print(calc)
+                    if calc is not None:
 
-                    if (calc > thresh) & (word != compare_word) & (word in changed_words.keys()):
-                        changed_words[word].append(compare_word)
+                        if (calc > thresh) & (word != compare_word) & (word in changed_words.keys()):
+                            changed_words[word].append(compare_word)
 
-                    elif (calc > thresh) & (word != compare_word) & (word in [b for a in changed_words.values() for b in a]):
-                        k = [key for key, value in changed_words.items() if word in value]
-                        changed_words[k[0]].append(compare_word)
+                        elif (calc > thresh) & (word != compare_word) & (word in [b for a in changed_words.values() for b in a]):
+                            k = [key for key, value in changed_words.items() if word in value]
+                            changed_words[k[0]].append(compare_word)
 
-                    elif (calc > thresh) & (word != compare_word) & (compare_word in changed_words.keys()):
-                        changed_words[compare_word].append(word)
+                        elif (calc > thresh) & (word != compare_word) & (compare_word in changed_words.keys()):
+                            changed_words[compare_word].append(word)
 
-                    elif (calc > thresh) & (word != compare_word) & (compare_word in [b for a in changed_words.values() for b in a]):
-                        k = [key for key, value in changed_words.items() if compare_word in value]
-                        changed_words[k[0]].append(word)
+                        elif (calc > thresh) & (word != compare_word) & (compare_word in [b for a in changed_words.values() for b in a]):
+                            k = [key for key, value in changed_words.items() if compare_word in value]
+                            changed_words[k[0]].append(word)
 
-                    elif (calc > thresh) & (word != compare_word):
-                        changed_words[word] = [compare_word]
+                        elif (calc > thresh) & (word != compare_word):
+                            changed_words[word] = [compare_word]
 
     return changed_words
 
@@ -389,6 +436,7 @@ def periodization(tfidf_data):
     tfidf_data.index = tfidf_data.index.droplevel(0)
     tfidf_data = tfidf_data.sort_index().fillna(0)
     years = tfidf_data.index
+    #print(years)
     cos_sim = 1-cosine_similarity(tfidf_data)
     cos_sim = min_max_scaler.fit_transform(cos_sim)
     sim_df = pd.DataFrame(cos_sim)

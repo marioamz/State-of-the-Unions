@@ -39,7 +39,7 @@ import spacy
 
 # Plotting tools
 import pyLDAvis
-import pyLDAvis.gensim  
+import pyLDAvis.gensim
 import matplotlib.pyplot as plt
 #%matplotlib inline
 
@@ -58,181 +58,13 @@ import yaml
 import os
 import textdistance
 
-def go():
-    '''
-    go function that runs the script.
-    '''
-
-    data = reading_data(str(sys.argv[1]), str(sys.argv[2]))
-    print(data)
-    return data
-
-
-def reading_data(PATH, filetype):
-    '''
-    This function reads in the corpus of the speeches and turns
-    them into dictionaries of the form:
-        - Key: (President, year), Value: list of paragraphs in speech
-
-    It takes in the PATH where the text files are located, and
-    the type of the files (in this case, '*.txt')
-    '''
-
-    speeches = {}
-    onlyfiles = [f for f in listdir(PATH) if isfile(join(PATH, f))]
-    
-    for file in onlyfiles:
-        filepath = os.path.join(str(PATH), file)
-        with open(filepath, 'r') as f:
-            speech = f.read().split("\n\n")
-            para = [line.replace('\n', ' ') for line in speech]
-            year = re.findall('(?<=_).*?(?=\.)', file)[0]
-            president = re.findall('([^/.]+)(?=_)', file)[0]
-            speeches[(president, year)] = para
-
-    return speeches
-
-def chunks(dictionary):
-    '''
-    This function takes in a dictionary of speeches and creates
-    noun phrase observations for each.
-    '''
-
-    new_dict = {}
-
-    nlp = spacy.load('en_core_web_sm')
-
-    for m, (k, v) in enumerate(dictionary.items()):
-        noun_phrase = []
-        for n, paragraph in enumerate(v):
-            doc = nlp(paragraph)
-            for token in doc.noun_chunks:
-                noun_phrase.append((token, n))
-        new_dict[k] = noun_phrase
-        
-        #print(m)
-        #if m == 20:
-            
-        #    break
-    return new_dict
-
-def contains_multiple_words(s):   
-    """
-    function determining if the string is more than 1 word
-    
-    input:
-        s: a string
-    output:
-        True if there are more than 1 element after applying a split function. False else.
-    """
-    if len(s.split()) > 1:
-        return True
-    else:
-        return False
-
-def nltk2wn_tag(nltk_tag):
-    """
-    get POS tagging to be able to better lemmatize words
-    """
-    if nltk_tag.startswith('J'):
-        return wordnet.ADJ
-    elif nltk_tag.startswith('V'):
-        return wordnet.VERB
-    elif nltk_tag.startswith('N'):
-        return wordnet.NOUN
-    elif nltk_tag.startswith('R'):
-        return wordnet.ADV
-    else:          
-        return None
-    
-def lemmed(token):
-    """
-    lemmatize all words
-    """
-    nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))  
-    wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
-    res_words = []
-    
-    for word, tag in wn_tagged:
-        if tag is None:            
-            res_words.append(word)
-        else:
-            res_words.append(lemmatizer.lemmatize(word, tag))
-            
-    return " ".join(res_words)
-
-def clean_words(speech_dict):
-    """
-    Creates a dictionary which keys are the
-    tuple (president,year), and its value a list of
-    tokenized words without StopWords.
-    
-    Inputs: Dictionary with speeches
-    Returns: Dictionary
-    """
-    clean_dict = {}
-    tokenizer = RegexpTokenizer(r'\w+')
-    stopWords = set(stopwords.words('english'))
-    whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    for n, (k, v) in enumerate(speech_dict.items()):
-        if k not in clean_dict:
-            clean_dict[k] = []
-        for line, para_num in v:
-            line = str(line).lower().strip()
-            line = ''.join(filter(whitelist.__contains__, line))
-
-            if contains_multiple_words(line) or line not in stopWords:
-                lem_word = lemmed(line)
-                clean_dict[k].append([(lem_word, para_num)])
-        
-    clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
-    return clean_dict
-
-def count_words(data):
-    """
-    turns the noun phrase data into counts of noun phrases, then finds the top 1000 most stated noun phrases for the co-occurrence matrix.
-    
-    inputs:
-        data: speeches that are cleaned and preprocessed into noun phrase chunks
-        x: the number of top entires we want
-    outputs:
-        dict_use: total count dictionary
-        sorted: the top x most referenced noun phrases across all of the speeches.
-    """
-    list_of_words = []
-    for n, x in enumerate(data.values()):
-        first_words = [i[0] for i in x]
-        list_of_words = list_of_words + first_words
-        #print(n)
-    #print(list_of_words)
-    counts = Counter(list_of_words)
-    return counts   
-
-def top_x(dict_use, x):
-    """
-    sort and take only top 1000 words/noun phrases
-    """
-    return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
-    #print(words)
-    
-    #return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
-
-def limit(full_data, top_words_data):
-    """
-    limit the noun phrases by speech and paragraph down to top 1000 words/noun phrases only
-    """
-    for n, x in enumerate(full_data.keys()):
-        new_list = [item for item in full_data[x] if item[0] in top_words_data]
-        full_data[x] = new_list 
-    
-    return full_data
 
 def convert_dict_to_list(dictionary):
     """ it creates a list of lists in which each list is a paragraph
-    coming from a speech 
+    coming from a speech
     Inputs: Dictionary of tuples (President, year): list of tuples (word, pagraph number )
     Returns: List of lists"""
-    
+
     list_document=[]
     for key, value in dictionary.items():
         #print(key)
@@ -246,13 +78,14 @@ def convert_dict_to_list(dictionary):
                     list_document.append(ls)
     return list_document
 
+
 def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
-    
+
     '''Creates a co-occurence matrix with the noun-phrases
-    that appear in each paragraph of each speech. 
+    that appear in each paragraph of each speech.
     Inputs (dictionary): Dictionary of speeches
     dataframe (boolean): if true, returns a dataframe
-    csv (boolean) : if true, writes a csv file with the name "co_occurence.csv" 
+    csv (boolean) : if true, writes a csv file with the name "co_occurence.csv"
     '''
     list_of_paragraphs=[]
     for speech in list(dictionary_of_speeches.values()):
@@ -261,11 +94,11 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
     documents=[]
     for paragraph in list_of_paragraphs:
         nouns = spacy_fxn_ls (paragraph)
-        list_of_nouns=[]    
+        list_of_nouns=[]
         for noun in nouns:
             list_of_nouns.append(str(noun))
         documents.append(list_of_nouns)
-    
+
     noun_set=[]
     for ls in documents:
         for noun in ls:
@@ -286,18 +119,19 @@ def co_occurence_matrix(dictionary_of_speeches, dataframe=False, csv=False):
         columns.append(noun)
         rows.append(values.values())
     if dataframe:
-        df = pd.DataFrame(list(rows), columns=columns, index=columns) 
+        df = pd.DataFrame(list(rows), columns=columns, index=columns)
     if csv:
-        df.to_csv("co_occurrence.csv", sep = ",")   
+        df.to_csv("co_occurrence.csv", sep = ",")
     return df
 
+
 def co_oc_matrix(documents, dataframe=False, csv=False):
-    
+
     '''Creates a co-occurence matrix with the noun-phrases
-    that appear in each paragraph of each speech. 
+    that appear in each paragraph of each speech.
     Inputs (list of lists): list of noun phrases (each paragraph is a list)
     dataframe (boolean): if true, returns a dataframe
-    csv (boolean) : if true, writes a csv file with the name "co_occurence.csv" 
+    csv (boolean) : if true, writes a csv file with the name "co_occurence.csv"
     '''
     noun_set=[]
     for ls in documents:
@@ -323,13 +157,16 @@ def co_oc_matrix(documents, dataframe=False, csv=False):
         for column in columns:
             df.at[column, column] = 1
     if csv:
-        df.to_csv("co_occurence.csv", sep = ",")   
+        df.to_csv("co_occurence.csv", sep = ",")
     return df
 
+
 def spacy_fxn_ls(strings):
-    """Returns a list of noun phrases
+    """
+    Returns a list of noun phrases
     Inputs: string
-    Returns: list"""
+    Returns: list
+    """
     nlp = spacy.load('en_core_web_sm')
     doc = nlp(strings)
     l = []
@@ -338,27 +175,119 @@ def spacy_fxn_ls(strings):
     print(l)
     return l
 
+
+def pairwise_similarity(df, method):
+    '''
+    This function takes in the path name for an excel file and
+    returns a co-occurrence matrix with pairwise values.
+    It does the work based on one of two methods:
+        - paper method
+        - cosine similarity
+    '''
+
+    co_matrix = pd.read_csv('co_occurence.csv', index_col = 0)
+
+    if method == 'paper':
+
+        total_pars = 5016
+        for i in co_matrix.columns:
+            colsum = co_matrix[i].sum()
+            for j, r in co_matrix.iterrows():
+                cosum = co_matrix[j].sum()
+        total_pars = 21143
+        for i in df.columns:
+            colsum = df[i].sum()
+            for j, r in df.iterrows():
+                cosum = df[j].sum()
+                a = np.log((r/total_pars) / (colsum/total_pars)*(cosum/total_pars)+1)
+                co_matrix[i] = a
+                df[i] = a
+
+        return df
+
+    else:
+
+        co_matrix = pd.DataFrame(cosine_similarity(co_matrix), index=co_matrix.columns, columns = co_matrix.columns)
+        co_matrix = pd.DataFrame(cosine_similarity(df), index=df.columns, columns = df.columns)
+
+        return co_matrix
+
+
+def network_graph(df, method):
+    '''
+    This function creates a network graph given an unsupervised clustering
+    method.
+
+        In:
+            df: co-occurrence matrix with dissimilarity
+            method: method of clustering
+        Out:
+            saved network graph
+    '''
+
+    # establish graph
+    graph = nx.Graph(co_matrix)
+
+    edges,weights = zip(*nx.get_edge_attributes(graph,'weight').items())
+
+    if method == 'community'
+    #first compute the best partition
+        partition = community.best_partition(graph)
+
+    else:
+    # first calculate k-means unsupervised
+        kmeans = cluster.KMeans(n_clusters = 8).fit(co_matrix)
+        co_matrix['scores'] = kmeans.labels_
+        partition = co_matrix['scores'].to_dict()
+
+    #drawing
+    size = float(len(set(partition.values())))
+    pos = nx.spring_layout(graph)
+    count = 0.
+    for com in set(partition.values()):
+        count = count + 1.
+        list_nodes = [nodes for nodes in partition.keys()
+                                if partition[nodes] == com]
+                                #print(list_nodes)
+        nx.draw_networkx_nodes(graph, pos, list_nodes, node_size = 0,
+                                node_color = str(count / size))
+        l = {node: node for node in list_nodes[:20]}
+        nx.draw_networkx_labels(graph, pos, font_size = 5, font_color=str(count/size), labels = l)
+
+
+    edges = []
+    weightsl = []
+    for u, v, weight in graph.edges.data('weight'):
+        if weight > 0.39:
+            edges.append((u, v))
+            weightsl.append(weight)
+
+    nx.draw_networkx_edges(graph, pos, edgelist = [edge for edge in edges], alpha=0.1, edge_color = weightsl)
+#plt.figure(figsize=(100,100))
+    plt.savefig("testinggraph.png", dpi=500)
+
+
 def create_lda_objects(dictionary, year_break=1935, noun_phrase_analysis=True, paragraph_analysis=True, topics = 10):
-    
-    '''Creates gensim LDA objects
+
+    '''
+    Creates gensim LDA objects
     Inputs:
         dictionary: dictionary with speeches. It comes from running "speeches, num_par = up.reading_data(PATH,'*.txt')"
         year_break(string): if "all", it creates a gensim LDA object for all speeches in the corpus. If not, it breaks
                             the corpus into two: speeches before and after that year (e.g. year_break = "1914")
-        noun_phrase_analysis(boolean): if True, it creates a corpus using noun phrases. Otherwise, it uses words, and then 
+        noun_phrase_analysis(boolean): if True, it creates a corpus using noun phrases. Otherwise, it uses words, and then
         creates bags of words (or bag of noun phrases)
-        paragraph_analysis (Boolean): 
+        paragraph_analysis (Boolean):
         topics: number of topics to be modeled. Default is 10.
     Returns:
         gensim lda object if year_break=="all", if there is a break in the years, it returns a list of two gensim LDA objects
-
         '''
-    
+
     if year_break!= 'all':
         dict1,dict2 = break_dictionary(dictionary, year_break)
         ls_of_dicts = [dict1,dict2]
     clean_dicts = []
-    
+
     # NOUN PHRASES
     if noun_phrase_analysis:
         if year_break=='all':
@@ -395,7 +324,7 @@ def create_lda_objects(dictionary, year_break=1935, noun_phrase_analysis=True, p
                 for dict_break2 in clean_dicts:
                     document = convert_dict_to_lemmedNF_to_LS_SPEECH(dict_break2)
                     documents.append(document)
-    # WORDS                
+    # WORDS
     else:
         documents=[]
         if year_break == "all":
@@ -410,7 +339,7 @@ def create_lda_objects(dictionary, year_break=1935, noun_phrase_analysis=True, p
                     one_speech=[]
                     for paragraph in v:
                         one_speech.extend(paragraph)
-                    documents.append(one_speech)   
+                    documents.append(one_speech)
         else:
             if paragraph_analysis:
                 for dict_break2 in ls_of_dicts:
@@ -461,18 +390,22 @@ def create_lda_objects(dictionary, year_break=1935, noun_phrase_analysis=True, p
                                            per_word_topics=True)
             lda_model.append(lda)
             i=i+1
-            
+
     return lda_model
+
 
 def create_lda_viz(lda_object, corpusmm):
     pyLDAvis.enable_notebook()
     vis = pyLDAvis.gensim.prepare(lda_object, corpora.MmCorpus(corpusmm), lda_object.id2word)
     return vis
 
+
 def convert_dict_to_lemmedNF_to_LS_SPEECH(dictionary):
-    '''Creates a list of speeches in which each list is a "document"
-    with all noun phrases by speech'''
-    
+    '''
+    Creates a list of speeches in which each list is a "document"
+    with all noun phrases by speech
+    '''
+
     list_document=[]
 
     for key, value in dictionary.items():
@@ -482,8 +415,9 @@ def convert_dict_to_lemmedNF_to_LS_SPEECH(dictionary):
         list_document.append(ls)
     return list_document
 
+
 def break_dictionary(dictionary,yearbreak):
-    
+
     break1= {}
     break2 = {}
     for k,v in dictionary.items():
@@ -495,12 +429,13 @@ def break_dictionary(dictionary,yearbreak):
 def num_there(s):
     return any(i.isdigit() for i in s)
 
+
 def clean_words_by_paragraph_LDA(speech_dict):
     """
     Creates a dictionary which keys are the
     tuple (president,year), and its value a list of
     tokenized words without StopWords.
-    
+
     Inputs: Dictionary with speeches
     Returns: Dictionary
     """
@@ -522,7 +457,7 @@ def clean_words_by_paragraph_LDA(speech_dict):
                 if num_there(word)== False and word not in stopWords and len(word) >0:
                     one_doc.append(word)
             ls.append(one_doc)
-            clean_dict[k].append(ls) 
+            clean_dict[k].append(ls)
     clean_dict = {k: [val for sublist in v for val in sublist] for k,v in clean_dict.items()}
     return clean_dict
 

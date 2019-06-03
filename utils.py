@@ -18,6 +18,10 @@ import re
 import sys
 import spacy
 import string
+import community
+import numpy as np
+import networkx as nx
+from sklearn.metrics.pairwise import cosine_similarity
 from operator import itemgetter
 from os import listdir
 from os.path import isfile, join
@@ -25,10 +29,6 @@ import pandas as pd
 import textdistance
 from itertools import groupby, chain
 from collections import OrderedDict
-stopWords = set(stopwords.words('english'))
-tokenizer = RegexpTokenizer(r'\w+')
-lemmatizer = WordNetLemmatizer()
-
 import gensim
 import gensim.corpora as corpora
 from gensim.utils import simple_preprocess
@@ -43,20 +43,15 @@ import pyLDAvis.gensim
 import matplotlib.pyplot as plt
 #%matplotlib inline
 
-# Enable logging for gensim - optional
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.ERROR)
 
 import warnings
 warnings.filterwarnings("ignore",category=DeprecationWarning)
 
-import utils as ut
-import importlib
-importlib.reload(ut)
-from itertools import groupby
-import yaml
-import os
-import textdistance
+stopWords = set(stopwords.words('english'))
+tokenizer = RegexpTokenizer(r'\w+')
+lemmatizer = WordNetLemmatizer()
 
 
 def convert_dict_to_list(dictionary):
@@ -185,29 +180,21 @@ def pairwise_similarity(df, method):
         - cosine similarity
     '''
 
-    co_matrix = pd.read_csv('co_occurence.csv', index_col = 0)
 
     if method == 'paper':
 
-        total_pars = 5016
-        for i in co_matrix.columns:
-            colsum = co_matrix[i].sum()
-            for j, r in co_matrix.iterrows():
-                cosum = co_matrix[j].sum()
         total_pars = 21143
         for i in df.columns:
             colsum = df[i].sum()
             for j, r in df.iterrows():
                 cosum = df[j].sum()
                 a = np.log((r/total_pars) / (colsum/total_pars)*(cosum/total_pars)+1)
-                co_matrix[i] = a
                 df[i] = a
 
         return df
 
     else:
 
-        co_matrix = pd.DataFrame(cosine_similarity(co_matrix), index=co_matrix.columns, columns = co_matrix.columns)
         co_matrix = pd.DataFrame(cosine_similarity(df), index=df.columns, columns = df.columns)
 
         return co_matrix
@@ -226,7 +213,7 @@ def network_graph(df, method):
     '''
 
     # establish graph
-    graph = nx.Graph(co_matrix)
+    graph = nx.Graph(df)
 
     edges,weights = zip(*nx.get_edge_attributes(graph,'weight').items())
 
@@ -236,7 +223,7 @@ def network_graph(df, method):
 
     else:
     # first calculate k-means unsupervised
-        kmeans = cluster.KMeans(n_clusters = 8).fit(co_matrix)
+        kmeans = cluster.KMeans(n_clusters = 8).fit(df)
         co_matrix['scores'] = kmeans.labels_
         partition = co_matrix['scores'].to_dict()
 
@@ -253,7 +240,6 @@ def network_graph(df, method):
                                 node_color = str(count / size))
         l = {node: node for node in list_nodes[:20]}
         nx.draw_networkx_labels(graph, pos, font_size = 5, font_color=str(count/size), labels = l)
-
 
     edges = []
     weightsl = []

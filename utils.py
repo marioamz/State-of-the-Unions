@@ -200,7 +200,7 @@ def pairwise_similarity(df, method):
         return co_matrix
 
 
-def network_graph(df, method):
+def network_graph(df, method, nounphrase, timeperiod, similarity):
     '''
     This function creates a network graph given an unsupervised clustering
     method.
@@ -235,7 +235,7 @@ def network_graph(df, method):
         count = count + 1.
         list_nodes = [nodes for nodes in partition.keys()
                                 if partition[nodes] == com]
-                                #print(list_nodes)
+        print(list_nodes)
         nx.draw_networkx_nodes(graph, pos, list_nodes, node_size = 0,
                                 node_color = str(count / size))
         l = {node: node for node in list_nodes[:20]}
@@ -249,8 +249,11 @@ def network_graph(df, method):
             weightsl.append(weight)
 
     nx.draw_networkx_edges(graph, pos, edgelist = [edge for edge in edges], alpha=0.1, edge_color = weightsl)
+
+    name = 'Networks/' + timeperiod + '_' + nounphrase + '_' + similarity + '_' + method + '.png'
+    print(name)
 #plt.figure(figsize=(100,100))
-    plt.savefig("testinggraph.png", dpi=500)
+    plt.savefig(name, dpi=500)
 
 
 def create_lda_objects(dictionary, year_break=1935, noun_phrase_analysis=True, paragraph_analysis=True, topics = 10):

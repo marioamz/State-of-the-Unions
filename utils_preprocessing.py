@@ -37,6 +37,9 @@ stopWords = set(stopwords.words('english'))
 stopWords.add("000")
 tokenizer = RegexpTokenizer(r'\w+')
 
+grammar = "NP: {<DT>?<JJ.*><NN.*>+}"
+cp = nltk.RegexpParser(grammar)
+
 lemmatizer = WordNetLemmatizer()
 
 
@@ -95,10 +98,15 @@ def nltk2wn_tag(nltk_tag):
     else:
         return None
 
-def use_regex(paragraph, num):
-    grammar = "NP: {<DT>?<JJ.*><NN.*>+}"
-    cp = nltk.RegexpParser(grammar)  
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
     
+def use_regex(paragraph, num):
+ 
     sentences = nltk.sent_tokenize(paragraph)
     sentences = [nltk.word_tokenize(sent) for sent in sentences]
     sentences = [nltk.pos_tag(sent) for sent in sentences]
@@ -109,23 +117,26 @@ def use_regex(paragraph, num):
         for word in result:
             if type(word) == tuple:
                 np = word[0].lower().translate(str.maketrans('', '', string.punctuation))
-                if (nltk2wn_tag(word[1]) is not None) and np not in stopWords and len(np)>0:
+                if np in ['l', 'm', 'p', 'u', 'v']:
+                    pass
+                elif (nltk2wn_tag(word[1]) is not None) and (np not in stopWords) and (not is_number(np)) and (len(np)>1):
                     noun_phrase.append((lemmatizer.lemmatize(np, nltk2wn_tag(word[1])), num))
-                elif np not in stopWords and len(np)>0:
+                elif (np not in stopWords) and (not is_number(np)) and (len(np)>1):
                     noun_phrase.append((lemmatizer.lemmatize(np), num))
+                    
             else:
                 np_list = []
                 for w in word:
                     w1 = w[0].lower().translate(str.maketrans('', '', string.punctuation))
                     if nltk2wn_tag(w[1]) == None:
-                        #print(w1, w[1])
                         np_list.append(lemmatizer.lemmatize(w1))
+                        
                     else:
                         np_list.append(lemmatizer.lemmatize(w1, nltk2wn_tag(w[1])))
-                                
+                
                 if len(np_list) > 0:
                     noun_phrase.append((" ".join(np_list), num))
-                
+                    
     return noun_phrase
                     
     

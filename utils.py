@@ -22,6 +22,7 @@ import community
 import numpy as np
 import networkx as nx
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn import cluster
 from operator import itemgetter
 from os import listdir
 from os.path import isfile, join
@@ -224,8 +225,8 @@ def network_graph(df, method, nounphrase, timeperiod, similarity):
     else:
     # first calculate k-means unsupervised
         kmeans = cluster.KMeans(n_clusters = 8).fit(df)
-        co_matrix['scores'] = kmeans.labels_
-        partition = co_matrix['scores'].to_dict()
+        df['scores'] = kmeans.labels_
+        partition = df['scores'].to_dict()
 
     #drawing
     size = float(len(set(partition.values())))

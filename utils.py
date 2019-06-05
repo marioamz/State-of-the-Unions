@@ -214,46 +214,68 @@ def network_graph(df, method, nounphrase, timeperiod, similarity):
     '''
 
     # establish graph
-    graph = nx.Graph(df)
+    graph = nx.Graph(df.values)
+    #graph = nx.from_pandas_edgelist(df, target=df.columns)
 
     edges,weights = zip(*nx.get_edge_attributes(graph,'weight').items())
 
     if method == 'community':
     #first compute the best partition
         partition = community.best_partition(graph)
+        cols = list(df.columns)
+
+        partitions = {}
+        for k, v in partition.items():
+            partitions[(cols[k], k)] = v
 
     else:
     # first calculate k-means unsupervised
         kmeans = cluster.KMeans(n_clusters = 8).fit(df)
         df['scores'] = kmeans.labels_
         partition = df['scores'].to_dict()
+        cols = list(df.columns)
 
-    #drawing
-    size = float(len(set(partition.values())))
+        new_partition = {}
+        count = 0
+        for k, v in partition.items():
+            new_partition[count] = v
+            count +=1
+
+        partitions = {}
+        for k, v in new_partition.items():
+            partitions[(cols[k], k)] = v
+
+#drawing
+    size = float(len(set(partitions.values())))
     pos = nx.spring_layout(graph)
     count = 0.
-    for com in set(partition.values()):
+
+    for com in set(partitions.values()):
         count = count + 1.
-        list_nodes = [nodes for nodes in partition.keys()
-                                if partition[nodes] == com]
-        print(list_nodes)
-        nx.draw_networkx_nodes(graph, pos, list_nodes, node_size = 0,
+        list_nodes = [nodes for nodes in partitions.keys()
+                                if partitions[nodes] == com]
+        show_nodes = [x[0] for x in list_nodes]
+        print(show_nodes)
+
+        draw_nodes = [x[1] for x in list_nodes]
+        l = {node: node for node in draw_nodes[:20]}
+
+        mapping = {}
+
+        for k, v in l.items():
+            for tup in list_nodes:
+                if k == tup[1]:
+                    mapping[k] = tup[0]
+
+        nx.draw_networkx_nodes(graph, pos, draw_nodes, node_size = 0,
                                 node_color = str(count / size))
-        l = {node: node for node in list_nodes[:20]}
-        nx.draw_networkx_labels(graph, pos, font_size = 5, font_color=str(count/size), labels = l)
 
-    edges = []
-    weightsl = []
-    for u, v, weight in graph.edges.data('weight'):
-        if weight > 0.39:
-            edges.append((u, v))
-            weightsl.append(weight)
+        nx.draw_networkx_labels(graph, pos, font_size = 5, font_color=str(count/size), labels = mapping)
 
-    nx.draw_networkx_edges(graph, pos, edgelist = [edge for edge in edges], alpha=0.1, edge_color = weightsl)
+    nx.draw_networkx_edges(graph, pos, alpha=0.1, edge_color = weights)
 
     name = 'Networks/' + timeperiod + '_' + nounphrase + '_' + similarity + '_' + method + '.png'
-    print(name)
-#plt.figure(figsize=(100,100))
+    #plt.figure(figsize=(100,100))
     plt.savefig(name, dpi=500)
 
 

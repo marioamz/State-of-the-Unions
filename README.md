@@ -15,22 +15,22 @@ pipeline_preprocessing.ipynb
 
 Chunking.ipynb
 - Author: Mario
-- Purpose: ___
+- Purpose: Exploration of different approaches to noun phrases.
 - Lines of Code: ~100
 
 Topic_Model.ipynb
-- Author:
-- Purpose:
+- Author: Mario
+- Purpose: Exploration of different methods to deploy the topic modeling approach pioneered by the paper. 
 - Lines of Code: ~30
 
 pipeline.ipynb
-- Author:
-- Purpose:
+- Author: Mario 
+- Purpose: Early version of the pipeline
 - Lines of Code: ~27
 
 utils.py
-- Author: 
-- Purpose:
+- Author: Mario and Aleister
+- Purpose: Functions for building co-occurrence matrix, calculating pairwise similarity, identifying semantic networks and clusters, and LDA functions. 
 - Lines of Code: ~500
 
 pipeline_preprocessing_regex.ipynb
@@ -49,10 +49,10 @@ EDA
 - Purpose: exploratory data analysis and notebooks for the mid-quarter presentation
 
 LDA_viz
-- Purpose:
+- Purpose: Visualizations outputted from LDA approach
 
 Networks:
-- Purpose:
+- Purpose: Visualizations outputted from paper's approach
 
 ## To run this code you need the following libraries:
 

@@ -28,12 +28,12 @@ utils.py
 - Purpose:
 
 pipeline_preprocessing_regex.ipynb
-- Author:
-- Purpose:
+- Author: Alix
+- Purpose: preprocessing pipeline, only for regex
 
 pipeline_preprocessing_spacy.ipynb
-- Author:
-- Purpose:
+- Author: Alix
+- Purpose: preprocessing pipeline, only for spacy
 
 
 ## There are 3 additional folders: 

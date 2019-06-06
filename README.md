@@ -89,7 +89,7 @@ Networks:
 - logging
 - warnings
 
-# Plotting tools
-import pyLDAvis
-import pyLDAvis.gensim
+For plotting LDA:
+- pyLDAvis
+- pyLDAvis.gensim
 

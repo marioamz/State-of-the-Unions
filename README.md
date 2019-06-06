@@ -6,35 +6,42 @@ An NLP analysis of State of the Union speeches from 1789 to 2018.
 utils_preprocessing.py
 - Author: Alix
 - Purpose: houses all of the functions necessary for preprocessing, such as creating noun phrases, lemmatizing noun phrases, mapping noun phrases, and periodization 
+- Lines of Code: 571
 
 pipeline_preprocessing.ipynb
 - Author: Alix & Mario
 - Purpose: Calls all of the preprocessing functions in the utils_preprocessing.py
+- Lines of Code: ~100
 
 Chunking.ipynb
 - Author: Mario
 - Purpose: ___
+- Lines of Code: ~100
 
 Topic_Model.ipynb
 - Author:
 - Purpose:
+- Lines of Code: ~30
 
 pipeline.ipynb
 - Author:
 - Purpose:
+- Lines of Code: ~27
 
 utils.py
 - Author: 
 - Purpose:
+- Lines of Code: ~500
 
 pipeline_preprocessing_regex.ipynb
 - Author: Alix
 - Purpose: preprocessing pipeline, only for regex
+- Lines of Code: ~100
 
 pipeline_preprocessing_spacy.ipynb
 - Author: Alix
 - Purpose: preprocessing pipeline, only for spacy
-
+- Lines of Code: ~100
 
 ## There are 3 additional folders: 
 

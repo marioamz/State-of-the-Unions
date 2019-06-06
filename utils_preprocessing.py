@@ -85,6 +85,9 @@ def reading_data(PATH, filetype):
 def nltk2wn_tag(nltk_tag):
     """
     get POS tagging to be able to better lemmatize words
+    
+    input: nltk_tag, which is the tag for a word
+    output: the type of word net thing that's associated with that tag
     """
 
     if nltk_tag.startswith('J'):
@@ -99,6 +102,12 @@ def nltk2wn_tag(nltk_tag):
         return None
 
 def is_number(s):
+    '''
+    function to determine whether or not the input is a number
+    
+    input: s, which is a string or possibly a number
+    output: true if a number, false if not
+    '''
     try:
         float(s)
         return True
@@ -106,6 +115,15 @@ def is_number(s):
         return False
     
 def use_regex(paragraph, num):
+    '''
+    function that finds noun phrases using regex. it also cleans the words, removes stop words, and words in phrases and lemmatizes.
+    
+    inputs:
+        paragraph: a paragraph of text from a speech
+        num: the paragraph number associated with that paragraph
+    output:
+        noun_phrase: a list of noun phrases or words, cleaned, lemmatized, stop words removed, and generally preprocessed
+    '''
  
     sentences = nltk.sent_tokenize(paragraph)
     sentences = [nltk.word_tokenize(sent) for sent in sentences]
@@ -145,6 +163,12 @@ def chunks(dictionary, noun_phrase_type):
     '''
     This function takes in a dictionary of speeches and creates
     noun phrase observations for each.
+    
+    inputs:
+        dictionary: a dictionary of unprocessed speeches
+        noun_phrase_type: either 'regex' or 'spacy', this defines how the noun phrases should be defined.
+    outputs:
+        new_dict: this dictionary is the original dictionary of speeches, just with cleaned, lemmatized, etc words and noun phrases.
     '''
 
     new_dict = {}
@@ -195,7 +219,10 @@ def contains_multiple_words(s):
 
 def lemmed(token):
     """
-    lemmatize all words
+    lemmatize all words - used if spacy used to define noun phrases.
+    
+    inputs:
+        token: this is a noun phrase that needs to be processed and lemmatized
     """
 
     nltk_tagged = nltk.pos_tag(nltk.word_tokenize(token))
@@ -247,6 +274,12 @@ def jaccard(a, b):
     This function takes the jaccard similarity between two
     noun phrases in order to return their distance to each
     other.
+    
+    inputs:
+        a: a word
+        b: b word
+    outputs:
+        a calculation of the jaccard similarity at the word level.
     '''
 
     a_set = set(a.split())
@@ -259,6 +292,11 @@ def jaccard(a, b):
 def first_calc(data):
     """
     1. calculate linear jaccard similarity
+    
+    input:
+        data: this is all unique words and noun phrases across the corpus.
+    output:
+        a list sorted by the jaccard similarity calculation 
     """
 
     comparison = "america is wonderfully weird"
@@ -273,6 +311,12 @@ def first_calc(data):
 def split_list(alist, wanted_parts=1):
     """
     2. split the massive list into smaller lists
+    
+    inputs:
+        alist: a list
+        wanted_parts: the number of lists that alist needs to be split into.
+    outputs:
+        a list of wanted_parts number of lists
     """
 
     length = len(alist)
@@ -282,7 +326,13 @@ def split_list(alist, wanted_parts=1):
 
 def within_calcs(data, thresh):
     """
-    3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
+    3. calculate jaccard similarity within each of the smaller lists and classify
+    
+    inputs:
+        data: the list where every word will be compared to every other word.
+        thresh: the threshold to compare the jaccard similarity calculation to, the point at which the two words are considered the same
+    outputs:
+        a dictionary that includes all of the mappings, if any, in this list
     """
 
     changed_words = {}
@@ -319,7 +369,13 @@ def word_changes(data, thresh, num_lists):
     """
     1. calculate linear jaccard similarity
     2. split the massive list into smaller lists
-    3. calculate jaccard similarity within each of the smaller lists and classify - THIS IS WHAT NEEDS ATTENTION.
+    3. calculate jaccard similarity within each of the smaller lists and classify
+    
+    inputs:
+        data: speeches
+        thresh: the threshold for if two words are similar enough to be considered the same
+        num_lists: the number of lists that the master list of words needs to be split into
+    outputs: the word mappings
     """
 
     flat_list = set(item[0] for sublist in data.values() for item in sublist)
@@ -338,6 +394,12 @@ def lemmed_phrases(changed_data, clean_data):
     '''
     This function takes in phrases and lems the words in
     it.
+    
+    inputs: 
+        changed_data: a dictionary of word change mappings
+        clean_data: the clean data that needs to be to be changed based on the word mappings
+    outputs:
+        clean_data: the dictionary of words and noun phrases changed based on word mappings
     '''
 
     flat_list = set(item for sublist in changed_data.values() for item in sublist)
@@ -376,6 +438,12 @@ def count_words(data):
 def top_x(dict_use, x):
     """
     sort and take only top 1000 words/noun phrases
+    
+    inputs:
+        dict_use: the dictionary that has the word counts
+        x: number of top words we want
+    outputs:
+        a list of the top x words across the corpus
     """
 
     return sorted(dict_use, key=dict_use.get, reverse=True)[:x]
@@ -384,6 +452,12 @@ def top_x(dict_use, x):
 def limit(full_data, top_words_data):
     """
     limit the noun phrases by speech and paragraph down to top 1000 words/noun phrases only
+    
+    inputs:
+        full_data: the full dictionary that needs to be limited
+        top_words_data: the top x words
+    output:
+        full_data: the dictionary that only has the top x words in it for every speech.
     """
 
     for n, x in enumerate(full_data.keys()):
@@ -395,6 +469,13 @@ def limit(full_data, top_words_data):
 def corpus_tfidf(limited_data, counted_data, top_data):
     """
     calculates tfidfs across the corpus
+    
+    inputs:
+        limited_data: the limited data dictionary
+        counted_data: the dictionary with the words counts
+        top_data: the list with the top words
+    outputs:
+        df.T = transposed version of a dataframe with the TFIDFs for every word in every speech.
     """
 
     index = top_data
@@ -406,7 +487,6 @@ def corpus_tfidf(limited_data, counted_data, top_data):
         l = [item[0] for item in limited_data[x]]
         counts = Counter(l)
         c = dict(counts)
-        #print(c)
         df1 = pd.DataFrame.from_dict(c, orient='index')
         df1.rename(columns={0:x}, inplace=True)
         df.update(df1)
@@ -425,6 +505,13 @@ def corpus_tfidf(limited_data, counted_data, top_data):
 def calc_sum(full_data, years_data):
     """
     calculates sums across combos of years
+    
+    inputs:
+        full_data: the full data of all years of data
+        years_data: the data for only the years we need
+        
+    outputs:
+        total: the total sum calculated
     """
 
     combo_data = list(itertools.combinations(years_data, 2))
@@ -442,6 +529,12 @@ def calc_sum(full_data, years_data):
 def periodization(tfidf_data):
     """
     calculates stuff from the paper to find distinct periods
+    
+    input:
+        tfidf_data: a dataframe with the tfidfs calculated
+    output:
+        save_dict: the dictionary with all weighted averages per year
+        sim_df: the dissimlarity matrix that's turned into a heat map
     """
     
     tfidf_data.index = tfidf_data.index.droplevel(0)
